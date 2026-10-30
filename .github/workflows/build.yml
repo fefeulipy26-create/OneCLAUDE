@@ -1,0 +1,1213 @@
+name: Build
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '8'
+
+      - name: Criar projeto
+        run: |
+          mkdir -p proj/src/main/java/com/legitclient proj/src/main/resources
+
+          cat > proj/build.gradle <<'LEGITEOF'
+          buildscript {
+              repositories {
+                  jcenter()
+                  mavenCentral()
+                  maven { name = "forge"; url = "https://maven.minecraftforge.net/" }
+                  maven { name = "forge-old"; url = "https://files.minecraftforge.net/maven" }
+              }
+              dependencies {
+                  classpath 'net.minecraftforge.gradle:ForgeGradle:2.1-SNAPSHOT'
+              }
+          }
+
+          apply plugin: 'net.minecraftforge.gradle.forge'
+
+          version = "1.0.0"
+          group = "com.legitclient"
+          archivesBaseName = "LegitClient"
+
+          sourceCompatibility = targetCompatibility = '1.8'
+          compileJava.options.encoding = 'UTF-8'
+
+          minecraft {
+              version = "1.8.9-11.15.1.2318-1.8.9"
+              runDir = "run"
+              mappings = "stable_22"
+          }
+
+          processResources {
+              inputs.property "version", project.version
+              inputs.property "mcversion", project.minecraft.version
+
+              from(sourceSets.main.resources.srcDirs) {
+                  include 'mcmod.info'
+                  expand 'version': project.version, 'mcversion': project.minecraft.version
+              }
+              from(sourceSets.main.resources.srcDirs) {
+                  exclude 'mcmod.info'
+              }
+          }
+          LEGITEOF
+          cat > proj/src/main/resources/mcmod.info <<'LEGITEOF'
+          [
+            {
+              "modid": "legitclient",
+              "name": "Legit Client",
+              "description": "Client legit: HUD, keystrokes, zoom, toggle sprint e FPS boost. Sem hacks.",
+              "version": "${version}",
+              "mcversion": "${mcversion}",
+              "authorList": [],
+              "credits": ""
+            }
+          ]
+          LEGITEOF
+          cat > proj/src/main/java/com/legitclient/ModConfig.java <<'LEGITEOF'
+          package com.legitclient;
+
+          import net.minecraftforge.common.config.Configuration;
+
+          import java.io.File;
+
+          public class ModConfig {
+              public static boolean fps = true;
+              public static boolean cps = true;
+              public static boolean coords = true;
+              public static boolean keystrokes = true;
+              public static boolean armor = true;
+              public static boolean potions = true;
+              public static boolean toggleSprint = false;
+              public static boolean zoom = true;
+              public static boolean fpsBoostOnStart = false;
+              public static int renderDistance = 6;
+
+              // animações (estilo OverflowAnimations)
+              public static boolean noReequip = false;
+              public static int swingSpeed = 100;
+              public static boolean itemCustom = false;
+              public static int itemX = 0, itemY = 0, itemZ = 0;
+              public static int itemRotX = 0, itemRotY = 0, itemRotZ = 0;
+              public static int itemScale = 100;
+
+              private static Configuration cfg;
+
+              public static void load(File file) {
+                  cfg = new Configuration(file);
+                  fps = cfg.get("modulos", "fps", true).getBoolean();
+                  cps = cfg.get("modulos", "cps", true).getBoolean();
+                  coords = cfg.get("modulos", "coordenadas", true).getBoolean();
+                  keystrokes = cfg.get("modulos", "keystrokes", true).getBoolean();
+                  armor = cfg.get("modulos", "armadura", true).getBoolean();
+                  potions = cfg.get("modulos", "pocoes", true).getBoolean();
+                  toggleSprint = cfg.get("modulos", "toggleSprint", false).getBoolean();
+                  zoom = cfg.get("modulos", "zoom", true).getBoolean();
+                  fpsBoostOnStart = cfg.get("fpsboost", "aplicarAoIniciar", false).getBoolean();
+                  renderDistance = cfg.get("fpsboost", "distanciaDeRenderizacao", 6).getInt();
+                  noReequip = cfg.get("animacoes", "semAnimacaoTrocarItem", false).getBoolean();
+                  swingSpeed = cfg.get("animacoes", "velocidadeSwing", 100).getInt();
+                  itemCustom = cfg.get("animacoes", "itemPersonalizado", false).getBoolean();
+                  itemX = cfg.get("animacoes", "itemX", 0).getInt();
+                  itemY = cfg.get("animacoes", "itemY", 0).getInt();
+                  itemZ = cfg.get("animacoes", "itemZ", 0).getInt();
+                  itemRotX = cfg.get("animacoes", "itemRotX", 0).getInt();
+                  itemRotY = cfg.get("animacoes", "itemRotY", 0).getInt();
+                  itemRotZ = cfg.get("animacoes", "itemRotZ", 0).getInt();
+                  itemScale = cfg.get("animacoes", "itemTamanho", 100).getInt();
+                  if (cfg.hasChanged()) cfg.save();
+              }
+
+              public static void save() {
+                  if (cfg == null) return;
+                  cfg.get("modulos", "fps", true).set(fps);
+                  cfg.get("modulos", "cps", true).set(cps);
+                  cfg.get("modulos", "coordenadas", true).set(coords);
+                  cfg.get("modulos", "keystrokes", true).set(keystrokes);
+                  cfg.get("modulos", "armadura", true).set(armor);
+                  cfg.get("modulos", "pocoes", true).set(potions);
+                  cfg.get("modulos", "toggleSprint", false).set(toggleSprint);
+                  cfg.get("modulos", "zoom", true).set(zoom);
+                  cfg.get("fpsboost", "aplicarAoIniciar", false).set(fpsBoostOnStart);
+                  cfg.get("fpsboost", "distanciaDeRenderizacao", 6).set(renderDistance);
+                  cfg.get("animacoes", "semAnimacaoTrocarItem", false).set(noReequip);
+                  cfg.get("animacoes", "velocidadeSwing", 100).set(swingSpeed);
+                  cfg.get("animacoes", "itemPersonalizado", false).set(itemCustom);
+                  cfg.get("animacoes", "itemX", 0).set(itemX);
+                  cfg.get("animacoes", "itemY", 0).set(itemY);
+                  cfg.get("animacoes", "itemZ", 0).set(itemZ);
+                  cfg.get("animacoes", "itemRotX", 0).set(itemRotX);
+                  cfg.get("animacoes", "itemRotY", 0).set(itemRotY);
+                  cfg.get("animacoes", "itemRotZ", 0).set(itemRotZ);
+                  cfg.get("animacoes", "itemTamanho", 100).set(itemScale);
+                  cfg.save();
+              }
+          }
+          LEGITEOF
+          cat > proj/src/main/java/com/legitclient/FpsBoost.java <<'LEGITEOF'
+          package com.legitclient;
+
+          import net.minecraft.client.Minecraft;
+          import net.minecraft.client.settings.GameSettings;
+          import org.lwjgl.opengl.Display;
+
+          /** Só mexe nas opções de vídeo do próprio jogo (nada de hack). */
+          public class FpsBoost {
+              public static void apply() {
+                  Minecraft mc = Minecraft.getMinecraft();
+                  GameSettings gs = mc.gameSettings;
+                  if (gs == null) return;
+
+                  gs.fancyGraphics = false;
+                  gs.clouds = 0;
+                  gs.particleSetting = 1;
+                  gs.ambientOcclusion = 0;
+                  gs.entityShadows = false;
+                  gs.useVbo = true;
+                  gs.enableVsync = false;
+                  gs.limitFramerate = 260;
+                  gs.renderDistanceChunks = Math.min(gs.renderDistanceChunks, ModConfig.renderDistance);
+                  try {
+                      Display.setVSyncEnabled(false);
+                  } catch (Throwable ignored) {
+                  }
+                  gs.saveOptions();
+                  if (mc.renderGlobal != null && mc.theWorld != null) {
+                      mc.renderGlobal.loadRenderers();
+                  }
+              }
+          }
+          LEGITEOF
+          cat > proj/src/main/java/com/legitclient/Animations.java <<'LEGITEOF'
+          package com.legitclient;
+
+          import net.minecraft.client.Minecraft;
+          import net.minecraft.client.entity.EntityPlayerSP;
+          import net.minecraft.client.renderer.ItemRenderer;
+          import net.minecraft.client.renderer.block.model.ItemTransformVec3f;
+          import net.minecraft.client.resources.model.IBakedModel;
+          import net.minecraft.item.ItemStack;
+          import net.minecraftforge.client.event.RenderHandEvent;
+          import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+          import net.minecraftforge.fml.common.gameevent.TickEvent;
+          import net.minecraftforge.fml.relauncher.ReflectionHelper;
+
+          import java.lang.reflect.Field;
+          import java.util.IdentityHashMap;
+          import java.util.Map;
+
+          /**
+           * Animações estilo OverflowAnimations, só com eventos do Forge (sem Mixin, sem OneConfig),
+           * pra funcionar no Pojav. Tudo é visual do lado do cliente.
+           */
+          public class Animations {
+              private final Minecraft mc = Minecraft.getMinecraft();
+
+              private final Map<ItemTransformVec3f, float[]> base = new IdentityHashMap<ItemTransformVec3f, float[]>();
+              private boolean dirty;
+
+              private boolean reflectReady, reflectFailed;
+              private Field fEquipped, fPrev, fItem, fSlot;
+
+              private float swingAcc;
+
+              private void initReflection() {
+                  if (reflectReady) return;
+                  reflectReady = true;
+                  try {
+                      fEquipped = ReflectionHelper.findField(ItemRenderer.class, "equippedProgress", "field_78454_c");
+                      fPrev = ReflectionHelper.findField(ItemRenderer.class, "prevEquippedProgress", "field_78451_d");
+                      fItem = ReflectionHelper.findField(ItemRenderer.class, "itemToRender", "field_78453_b");
+                      fSlot = ReflectionHelper.findField(ItemRenderer.class, "equippedItemSlot", "field_78450_g");
+                  } catch (Throwable t) {
+                      reflectFailed = true;
+                  }
+              }
+
+              @SubscribeEvent
+              public void onTick(TickEvent.ClientTickEvent e) {
+                  if (e.phase != TickEvent.Phase.END) return;
+                  EntityPlayerSP p = mc.thePlayer;
+                  if (p == null) return;
+
+                  // Velocidade do swing (só visual)
+                  if (ModConfig.swingSpeed != 100 && p.isSwingInProgress) {
+                      swingAcc += ModConfig.swingSpeed / 100f - 1f;
+                      if (swingAcc >= 1f) {
+                          p.swingProgressInt++;
+                          swingAcc -= 1f;
+                      } else if (swingAcc <= -1f) {
+                          if (p.swingProgressInt > 0) p.swingProgressInt--;
+                          swingAcc += 1f;
+                      }
+                  } else {
+                      swingAcc = 0f;
+                  }
+
+                  // Sem animação ao trocar de item
+                  if (ModConfig.noReequip && !reflectFailed && mc.getItemRenderer() != null) {
+                      try {
+                          initReflection();
+                          if (!reflectFailed) {
+                              ItemRenderer ir = mc.getItemRenderer();
+                              fItem.set(ir, p.getHeldItem());
+                              fSlot.setInt(ir, p.inventory.currentItem);
+                              fEquipped.setFloat(ir, 1.0f);
+                              fPrev.setFloat(ir, 1.0f);
+                          }
+                      } catch (Throwable t) {
+                          reflectFailed = true;
+                      }
+                  }
+              }
+
+              @SubscribeEvent
+              public void onRenderHand(RenderHandEvent e) {
+                  if (!ModConfig.itemCustom) {
+                      if (dirty) restore();
+                      return;
+                  }
+                  EntityPlayerSP p = mc.thePlayer;
+                  if (p == null) return;
+                  ItemStack s = p.getHeldItem();
+                  if (s == null) return;
+                  try {
+                      IBakedModel m = mc.getRenderItem().getItemModelMesher().getItemModel(s);
+                      if (m == null) return;
+                      ItemTransformVec3f t = m.getItemCameraTransforms().firstPerson;
+                      if (t == null || t == ItemTransformVec3f.DEFAULT) return;
+                      float[] b = base.get(t);
+                      if (b == null) {
+                          b = new float[]{
+                                  t.translation.x, t.translation.y, t.translation.z,
+                                  t.rotation.x, t.rotation.y, t.rotation.z,
+                                  t.scale.x, t.scale.y, t.scale.z};
+                          base.put(t, b);
+                      }
+                      set(t, b, ModConfig.itemX, ModConfig.itemY, ModConfig.itemZ,
+                              ModConfig.itemRotX, ModConfig.itemRotY, ModConfig.itemRotZ, ModConfig.itemScale / 100f);
+                      dirty = true;
+                  } catch (Throwable ignored) {
+                  }
+              }
+
+              private void set(ItemTransformVec3f t, float[] b, int dx, int dy, int dz, int rx, int ry, int rz, float sc) {
+                  t.translation.x = b[0] + dx * 0.02f;
+                  t.translation.y = b[1] + dy * 0.02f;
+                  t.translation.z = b[2] + dz * 0.02f;
+                  t.rotation.x = b[3] + rx;
+                  t.rotation.y = b[4] + ry;
+                  t.rotation.z = b[5] + rz;
+                  t.scale.x = b[6] * sc;
+                  t.scale.y = b[7] * sc;
+                  t.scale.z = b[8] * sc;
+              }
+
+              private void restore() {
+                  for (Map.Entry<ItemTransformVec3f, float[]> en : base.entrySet()) {
+                      set(en.getKey(), en.getValue(), 0, 0, 0, 0, 0, 0, 1f);
+                  }
+                  dirty = false;
+              }
+          }
+          LEGITEOF
+          cat > proj/src/main/java/com/legitclient/LegitClient.java <<'LEGITEOF'
+          package com.legitclient;
+
+          import net.minecraft.client.Minecraft;
+          import net.minecraft.client.gui.FontRenderer;
+          import net.minecraft.client.gui.Gui;
+          import net.minecraft.client.gui.ScaledResolution;
+          import net.minecraft.client.renderer.GlStateManager;
+          import net.minecraft.client.renderer.RenderHelper;
+          import net.minecraft.client.resources.I18n;
+          import net.minecraft.client.settings.KeyBinding;
+          import net.minecraft.command.CommandBase;
+          import net.minecraft.command.ICommandSender;
+          import net.minecraft.item.ItemStack;
+          import net.minecraft.potion.Potion;
+          import net.minecraft.potion.PotionEffect;
+          import net.minecraftforge.client.ClientCommandHandler;
+          import net.minecraftforge.client.event.RenderGameOverlayEvent;
+          import net.minecraftforge.common.MinecraftForge;
+          import net.minecraftforge.fml.client.registry.ClientRegistry;
+          import net.minecraftforge.fml.common.Mod;
+          import net.minecraftforge.fml.common.event.FMLInitializationEvent;
+          import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
+          import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+          import net.minecraftforge.fml.common.gameevent.TickEvent;
+          import org.lwjgl.input.Keyboard;
+          import org.lwjgl.input.Mouse;
+
+          import java.util.LinkedList;
+
+          @Mod(modid = LegitClient.MODID, name = "Legit Client", version = "1.0.0",
+                  acceptedMinecraftVersions = "[1.8.9]", clientSideOnly = true)
+          public class LegitClient {
+              public static final String MODID = "legitclient";
+
+              public static final KeyBinding KEY_MENU = new KeyBinding("Abrir menu", Keyboard.KEY_RSHIFT, "Legit Client");
+              public static final KeyBinding KEY_ZOOM = new KeyBinding("Zoom", Keyboard.KEY_C, "Legit Client");
+
+              private final Minecraft mc = Minecraft.getMinecraft();
+
+              private volatile boolean openMenu;
+
+              private final LinkedList<Long> leftClicks = new LinkedList<Long>();
+              private final LinkedList<Long> rightClicks = new LinkedList<Long>();
+              private boolean lastLeft, lastRight;
+
+              private boolean zooming;
+              private float savedFov;
+              private boolean savedSmooth;
+
+              private boolean forcedSprint;
+
+              @Mod.EventHandler
+              public void preInit(FMLPreInitializationEvent e) {
+                  ModConfig.load(e.getSuggestedConfigurationFile());
+              }
+
+              @Mod.EventHandler
+              public void init(FMLInitializationEvent e) {
+                  ClientRegistry.registerKeyBinding(KEY_MENU);
+                  ClientRegistry.registerKeyBinding(KEY_ZOOM);
+                  MinecraftForge.EVENT_BUS.register(this);
+                  MinecraftForge.EVENT_BUS.register(new Animations());
+
+                  // /lc abre o menu (útil no celular, sem Right Shift)
+                  ClientCommandHandler.instance.registerCommand(new CommandBase() {
+                      @Override
+                      public String getCommandName() {
+                          return "lc";
+                      }
+
+                      @Override
+                      public String getCommandUsage(ICommandSender sender) {
+                          return "/lc";
+                      }
+
+                      @Override
+                      public void processCommand(ICommandSender sender, String[] args) {
+                          openMenu = true;
+                      }
+
+                      @Override
+                      public int getRequiredPermissionLevel() {
+                          return 0;
+                      }
+
+                      @Override
+                      public boolean canCommandSenderUseCommand(ICommandSender sender) {
+                          return true;
+                      }
+                  });
+
+                  if (ModConfig.fpsBoostOnStart) FpsBoost.apply();
+              }
+
+              @SubscribeEvent
+              public void onTick(TickEvent.ClientTickEvent e) {
+                  if (e.phase != TickEvent.Phase.END) return;
+
+                  // CPS (só conta com o jogo em foco, sem tela aberta)
+                  long now = System.currentTimeMillis();
+                  boolean l = Mouse.isButtonDown(0);
+                  boolean r = Mouse.isButtonDown(1);
+                  if (mc.currentScreen == null) {
+                      if (l && !lastLeft) leftClicks.add(now);
+                      if (r && !lastRight) rightClicks.add(now);
+                  }
+                  lastLeft = l;
+                  lastRight = r;
+                  while (!leftClicks.isEmpty() && now - leftClicks.getFirst() > 1000) leftClicks.removeFirst();
+                  while (!rightClicks.isEmpty() && now - rightClicks.getFirst() > 1000) rightClicks.removeFirst();
+
+                  // Menu
+                  if (KEY_MENU.isPressed()) openMenu = true;
+                  if (openMenu && (mc.currentScreen == null || !(mc.currentScreen instanceof MenuScreen))) {
+                      openMenu = false;
+                      mc.displayGuiScreen(new MenuScreen());
+                  }
+
+                  if (mc.thePlayer == null) return;
+
+                  // Toggle sprint: equivale a segurar a tecla de sprint enquanto anda pra frente
+                  int sprintCode = mc.gameSettings.keyBindSprint.getKeyCode();
+                  if (ModConfig.toggleSprint && mc.currentScreen == null
+                          && mc.gameSettings.keyBindForward.isKeyDown() && !mc.thePlayer.isSneaking()) {
+                      KeyBinding.setKeyBindState(sprintCode, true);
+                      forcedSprint = true;
+                  } else if (forcedSprint) {
+                      KeyBinding.setKeyBindState(sprintCode, false);
+                      forcedSprint = false;
+                  }
+
+                  // Zoom (FOV menor + câmera suave, igual ao zoom de OptiFine)
+                  boolean wantZoom = ModConfig.zoom && mc.currentScreen == null && KEY_ZOOM.isKeyDown();
+                  if (wantZoom && !zooming) {
+                      savedFov = mc.gameSettings.fovSetting;
+                      savedSmooth = mc.gameSettings.smoothCamera;
+                      mc.gameSettings.fovSetting = Math.max(10f, savedFov / 4f);
+                      mc.gameSettings.smoothCamera = true;
+                      zooming = true;
+                  } else if (!wantZoom && zooming) {
+                      mc.gameSettings.fovSetting = savedFov;
+                      mc.gameSettings.smoothCamera = savedSmooth;
+                      zooming = false;
+                  }
+              }
+
+              @SubscribeEvent
+              public void onRender(RenderGameOverlayEvent.Post e) {
+                  if (e.type != RenderGameOverlayEvent.ElementType.ALL) return;
+                  if (mc.thePlayer == null || mc.gameSettings.showDebugInfo) return;
+
+                  FontRenderer fr = mc.fontRendererObj;
+                  ScaledResolution sr = e.resolution;
+                  int y = 4;
+
+                  if (ModConfig.fps) {
+                      fr.drawStringWithShadow("FPS: " + Minecraft.getDebugFPS(), 4, y, 0xFFFFFF);
+                      y += 10;
+                  }
+                  if (ModConfig.cps) {
+                      fr.drawStringWithShadow("CPS: " + leftClicks.size() + " | " + rightClicks.size(), 4, y, 0xFFFFFF);
+                      y += 10;
+                  }
+                  if (ModConfig.coords) {
+                      String xyz = String.format("XYZ: %.1f / %.1f / %.1f",
+                              mc.thePlayer.posX, mc.thePlayer.posY, mc.thePlayer.posZ);
+                      fr.drawStringWithShadow(xyz, 4, y, 0xFFFFFF);
+                      y += 10;
+                      fr.drawStringWithShadow("Direção: " + mc.thePlayer.getHorizontalFacing().getName(), 4, y, 0xFFFFFF);
+                      y += 10;
+                  }
+
+                  if (ModConfig.keystrokes) drawKeystrokes(4, y + 6);
+                  if (ModConfig.armor) drawArmor(sr);
+                  if (ModConfig.potions) drawPotions(sr);
+              }
+
+              private void box(int x, int y, int w, int h, String label, boolean down) {
+                  FontRenderer fr = mc.fontRendererObj;
+                  Gui.drawRect(x, y, x + w, y + h, down ? 0x99FFFFFF : 0x66000000);
+                  fr.drawString(label, x + (w - fr.getStringWidth(label)) / 2, y + (h - 8) / 2,
+                          down ? 0x000000 : 0xFFFFFF);
+              }
+
+              private void drawKeystrokes(int x, int y) {
+                  int s = 18;
+                  box(x + 20, y, s, s, "W", mc.gameSettings.keyBindForward.isKeyDown());
+                  box(x, y + 20, s, s, "A", mc.gameSettings.keyBindLeft.isKeyDown());
+                  box(x + 20, y + 20, s, s, "S", mc.gameSettings.keyBindBack.isKeyDown());
+                  box(x + 40, y + 20, s, s, "D", mc.gameSettings.keyBindRight.isKeyDown());
+                  box(x, y + 40, 29, s, "L " + leftClicks.size(), Mouse.isButtonDown(0));
+                  box(x + 31, y + 40, 29, s, "R " + rightClicks.size(), Mouse.isButtonDown(1));
+                  box(x, y + 60, 60, 10, "", mc.gameSettings.keyBindJump.isKeyDown());
+              }
+
+              private void drawArmor(ScaledResolution sr) {
+                  FontRenderer fr = mc.fontRendererObj;
+                  ItemStack[] stacks = new ItemStack[]{
+                          mc.thePlayer.inventory.armorInventory[3],
+                          mc.thePlayer.inventory.armorInventory[2],
+                          mc.thePlayer.inventory.armorInventory[1],
+                          mc.thePlayer.inventory.armorInventory[0],
+                          mc.thePlayer.getHeldItem()
+                  };
+                  int x = sr.getScaledWidth() - 20;
+                  int y = sr.getScaledHeight() / 2 - 45;
+
+                  for (ItemStack s : stacks) {
+                      if (s != null) {
+                          GlStateManager.pushMatrix();
+                          RenderHelper.enableGUIStandardItemLighting();
+                          mc.getRenderItem().renderItemAndEffectIntoGUI(s, x, y);
+                          RenderHelper.disableStandardItemLighting();
+                          GlStateManager.popMatrix();
+                          if (s.isItemStackDamageable()) {
+                              String t = String.valueOf(s.getMaxDamage() - s.getItemDamage());
+                              fr.drawStringWithShadow(t, x - fr.getStringWidth(t) - 2, y + 4, 0xFFFFFF);
+                          }
+                      }
+                      y += 18;
+                  }
+              }
+
+              private void drawPotions(ScaledResolution sr) {
+                  FontRenderer fr = mc.fontRendererObj;
+                  int y = 4;
+                  for (Object o : mc.thePlayer.getActivePotionEffects()) {
+                      PotionEffect pe = (PotionEffect) o;
+                      String name = I18n.format(pe.getEffectName());
+                      if (pe.getAmplifier() > 0) name += " " + (pe.getAmplifier() + 1);
+                      String t = name + " " + Potion.getDurationString(pe);
+                      fr.drawStringWithShadow(t, sr.getScaledWidth() - fr.getStringWidth(t) - 4, y, 0xFFFFFF);
+                      y += 10;
+                  }
+              }
+          }
+          LEGITEOF
+          cat > proj/src/main/java/com/legitclient/MenuScreen.java <<'LEGITEOF'
+          package com.legitclient;
+
+          import net.minecraft.client.gui.FontRenderer;
+          import net.minecraft.client.gui.Gui;
+          import net.minecraft.client.gui.GuiScreen;
+          import net.minecraft.client.gui.GuiTextField;
+          import net.minecraft.client.gui.ScaledResolution;
+          import net.minecraftforge.fml.client.FMLClientHandler;
+          import net.minecraftforge.fml.client.IModGuiFactory;
+          import net.minecraftforge.fml.common.Loader;
+          import net.minecraftforge.fml.common.ModContainer;
+          import org.lwjgl.input.Keyboard;
+          import org.lwjgl.input.Mouse;
+          import org.lwjgl.opengl.GL11;
+
+          import java.io.IOException;
+          import java.util.ArrayList;
+          import java.util.Collections;
+          import java.util.Comparator;
+          import java.util.List;
+
+          /** Menu no estilo do OneConfig: sidebar, cards de mods, switches. */
+          public class MenuScreen extends GuiScreen {
+              private static final int BG = 0xF0101318;
+              private static final int SIDE = 0xFF0B0D11;
+              private static final int CARD = 0xFF1A1E26;
+              private static final int CARD_HOVER = 0xFF232A37;
+              private static final int ACCENT = 0xFF2D6FF7;
+              private static final int OFF = 0xFF3A4152;
+              private static final int TXT = 0xFFFFFFFF;
+              private static final int SUB = 0xFF8B93A5;
+              private static final int[] ICON = {0xFF2D6FF7, 0xFF8B5CF6, 0xFF10B981, 0xFFF59E0B, 0xFFEF4444, 0xFF06B6D4};
+
+              private static final String[] TABS = {"Mods", "Client", "FPS", "Anim"};
+              private static final String[] TOGGLES = {
+                      "FPS", "CPS", "Coordenadas", "Keystrokes", "Armadura", "Poções", "Toggle Sprint", "Zoom (tecla C)"
+              };
+
+              private static int tab = 0;
+              private static String lastSearch = "";
+
+              // ---------- mods instalados ----------
+              private static class Entry {
+                  String name, version, id;
+                  IModGuiFactory factory;
+                  boolean self;
+              }
+
+              private static List<Entry> allMods;
+
+              private static void loadMods() {
+                  if (allMods != null) return;
+                  allMods = new ArrayList<Entry>();
+                  for (ModContainer m : Loader.instance().getActiveModList()) {
+                      String id = m.getModId();
+                      if (id.equals("mcp") || id.equals("FML") || id.equals("Forge")) continue;
+                      Entry e = new Entry();
+                      e.name = m.getName();
+                      e.version = m.getVersion();
+                      e.id = id;
+                      e.self = id.equals(LegitClient.MODID);
+                      try {
+                          IModGuiFactory f = FMLClientHandler.instance().getGuiFactoryFor(m);
+                          if (f != null && f.mainConfigGuiClass() != null) e.factory = f;
+                      } catch (Throwable ignored) {
+                      }
+                      allMods.add(e);
+                  }
+                  Collections.sort(allMods, new Comparator<Entry>() {
+                      @Override
+                      public int compare(Entry a, Entry b) {
+                          if (a.self != b.self) return a.self ? -1 : 1;
+                          return a.name.compareToIgnoreCase(b.name);
+                      }
+                  });
+              }
+
+              private List<Entry> filtered() {
+                  loadMods();
+                  String q = search == null ? "" : search.getText().trim().toLowerCase();
+                  List<Entry> out = new ArrayList<Entry>();
+                  for (Entry e : allMods) {
+                      if (q.isEmpty() || e.name.toLowerCase().contains(q) || e.id.toLowerCase().contains(q)) out.add(e);
+                  }
+                  return out;
+              }
+
+              // ---------- estado de layout ----------
+              private static class Hit {
+                  int x, y, w, h;
+                  boolean clip;
+                  Runnable r;
+              }
+
+              private final List<Hit> hits = new ArrayList<Hit>();
+              private int mx, my;
+              private int px, py, pw, ph, sw;
+              private int vx, vy, vw, vh;
+              private int sx, sy, sww;
+              private int scroll, contentH;
+              private boolean pressed, dragMoved;
+              private int pressX, pressY, lastDragY;
+              private String msg = "";
+              private long msgUntil;
+              private GuiTextField search;
+
+              private void layout() {
+                  pw = Math.min(width - 12, 440);
+                  ph = Math.min(height - 12, 260);
+                  px = (width - pw) / 2;
+                  py = (height - ph) / 2;
+                  sw = pw < 300 ? 60 : 78;
+                  vx = px + sw + 8;
+                  vy = py + 32;
+                  vw = pw - sw - 16;
+                  vh = ph - 32 - 18;
+                  sww = Math.min(120, (pw - sw) / 2 - 10);
+                  sx = px + pw - sww - 28;
+                  sy = py + 6;
+              }
+
+              @Override
+              public void initGui() {
+                  layout();
+                  Keyboard.enableRepeatEvents(true);
+                  search = new GuiTextField(0, fontRendererObj, sx + 6, sy + 4, sww - 12, 10);
+                  search.setEnableBackgroundDrawing(false);
+                  search.setMaxStringLength(24);
+                  search.setText(lastSearch);
+              }
+
+              @Override
+              public void onGuiClosed() {
+                  Keyboard.enableRepeatEvents(false);
+                  ModConfig.save();
+              }
+
+              @Override
+              public void updateScreen() {
+                  if (search != null) search.updateCursorCounter();
+              }
+
+              @Override
+              public boolean doesGuiPauseGame() {
+                  return false;
+              }
+
+              // ---------- desenho ----------
+              private static void rr(int x, int y, int w, int h, int r, int c) {
+                  r = Math.min(r, Math.min(w, h) / 2);
+                  if (r <= 0) {
+                      Gui.drawRect(x, y, x + w, y + h, c);
+                      return;
+                  }
+                  Gui.drawRect(x, y + r, x + w, y + h - r, c);
+                  for (int i = 0; i < r; i++) {
+                      double dy = r - i - 0.5;
+                      int inset = r - (int) Math.round(Math.sqrt(r * r - dy * dy));
+                      Gui.drawRect(x + inset, y + i, x + w - inset, y + i + 1, c);
+                      Gui.drawRect(x + inset, y + h - 1 - i, x + w - inset, y + h - i, c);
+                  }
+              }
+
+              private boolean over(int x, int y, int w, int h) {
+                  return mx >= x && mx < x + w && my >= y && my < y + h;
+              }
+
+              private boolean inView(int x, int y) {
+                  return x >= vx && x < vx + vw && y >= vy && y < vy + vh;
+              }
+
+              private void hitFixed(int x, int y, int w, int h, Runnable r) {
+                  hit(x, y, w, h, r);
+                  hits.get(hits.size() - 1).clip = false;
+              }
+
+              private void hit(int x, int y, int w, int h, Runnable r) {
+                  Hit hh = new Hit();
+                  hh.clip = true;
+                  hh.x = x;
+                  hh.y = y;
+                  hh.w = w;
+                  hh.h = h;
+                  hh.r = r;
+                  hits.add(hh);
+              }
+
+              private void say(String s) {
+                  msg = s;
+                  msgUntil = System.currentTimeMillis() + 2500;
+              }
+
+              private void scissor(boolean on) {
+                  if (!on) {
+                      GL11.glDisable(GL11.GL_SCISSOR_TEST);
+                      return;
+                  }
+                  int f = new ScaledResolution(mc).getScaleFactor();
+                  GL11.glEnable(GL11.GL_SCISSOR_TEST);
+                  GL11.glScissor(vx * f, mc.displayHeight - (vy + vh) * f, vw * f, vh * f);
+              }
+
+              @Override
+              public void drawScreen(int mouseX, int mouseY, float partialTicks) {
+                  mx = mouseX;
+                  my = mouseY;
+                  hits.clear();
+                  layout();
+                  FontRenderer fr = fontRendererObj;
+
+                  Gui.drawRect(0, 0, width, height, 0xA0000000);
+                  rr(px, py, pw, ph, 6, BG);
+                  rr(px, py, sw, ph, 6, SIDE);
+                  Gui.drawRect(px + sw - 6, py, px + sw, py + ph, SIDE);
+
+                  // logo + abas
+                  fr.drawStringWithShadow("Legit", px + 10, py + 9, TXT);
+                  fr.drawStringWithShadow("Client", px + 10, py + 19, ACCENT);
+                  for (int i = 0; i < TABS.length; i++) {
+                      final int idx = i;
+                      int ty = py + 40 + i * 24;
+                      boolean hov = over(px + 6, ty, sw - 12, 20);
+                      if (tab == i) {
+                          rr(px + 6, ty, sw - 12, 20, 4, 0xFF1F2937);
+                          rr(px + 6, ty + 4, 2, 12, 1, ACCENT);
+                      } else if (hov) {
+                          rr(px + 6, ty, sw - 12, 20, 4, 0xFF151922);
+                      }
+                      fr.drawStringWithShadow(TABS[i], px + 16, ty + 6, tab == i ? TXT : SUB);
+                      hitFixed(px + 6, ty, sw - 12, 20, new Runnable() {
+                          @Override
+                          public void run() {
+                              tab = idx;
+                              scroll = 0;
+                              if (search != null) search.setFocused(false);
+                          }
+                      });
+                  }
+                  fr.drawString("v1.0.0", px + 10, py + ph - 14, SUB);
+
+                  // botão fechar
+                  boolean hc = over(px + pw - 20, py + 6, 14, 14);
+                  rr(px + pw - 20, py + 6, 14, 14, 4, hc ? 0xFFEF4444 : CARD);
+                  drawCenteredString(fr, "x", px + pw - 13, py + 10, TXT);
+                  hitFixed(px + pw - 20, py + 6, 14, 14, new Runnable() {
+                      @Override
+                      public void run() {
+                          mc.displayGuiScreen(null);
+                      }
+                  });
+
+                  // título + busca
+                  int cx = px + sw + 10;
+                  int max = Math.max(0, contentH - vh);
+                  if (scroll > max) scroll = max;
+                  if (scroll < 0) scroll = 0;
+
+                  if (tab == 0) {
+                      fr.drawStringWithShadow("Mods (" + filtered().size() + ")", cx, py + 10, TXT);
+                      rr(sx, sy, sww, 18, 4, CARD);
+                      search.xPosition = sx + 6;
+                      search.yPosition = sy + 5;
+                      search.drawTextBox();
+                      if (search.getText().isEmpty() && !search.isFocused()) {
+                          fr.drawString("Pesquisar...", sx + 6, sy + 5, SUB);
+                      }
+                  } else {
+                      fr.drawStringWithShadow(tab == 1 ? "Módulos do client" : (tab == 2 ? "FPS boost" : "Animações"), cx, py + 10, TXT);
+                  }
+
+                  // conteúdo com scroll
+                  scissor(true);
+                  if (tab == 0) drawMods(fr);
+                  else if (tab == 1) drawClient(fr);
+                  else if (tab == 2) drawFps(fr);
+                  else drawAnim(fr);
+                  scissor(false);
+
+                  if (contentH > vh) {
+                      int th = 20;
+                      int ty = vy + (int) ((float) scroll / Math.max(1, contentH - vh) * (vh - th));
+                      rr(vx + vw + 1, ty, 3, th, 1, OFF);
+                  }
+
+                  if (System.currentTimeMillis() < msgUntil) {
+                      fr.drawStringWithShadow(msg, vx, py + ph - 13, 0xFF7FB0FF);
+                  }
+              }
+
+              private void drawMods(FontRenderer fr) {
+                  List<Entry> list = filtered();
+                  int cols = Math.max(1, (vw + 6) / 146);
+                  int cw = (vw - (cols - 1) * 6) / cols;
+                  int ch = 34;
+                  int rows = (list.size() + cols - 1) / cols;
+                  contentH = rows * (ch + 6);
+
+                  if (list.isEmpty()) {
+                      fr.drawString("Nenhum mod encontrado.", vx + 4, vy + 6, SUB);
+                      return;
+                  }
+                  for (int i = 0; i < list.size(); i++) {
+                      final Entry e = list.get(i);
+                      int x = vx + (i % cols) * (cw + 6);
+                      int y = vy + (i / cols) * (ch + 6) - scroll;
+                      if (y + ch < vy || y > vy + vh) continue;
+
+                      boolean hov = over(x, y, cw, ch) && inView(mx, my);
+                      rr(x, y, cw, ch, 5, hov ? CARD_HOVER : CARD);
+                      rr(x + 6, y + 6, 22, 22, 5, ICON[Math.abs(e.id.hashCode()) % ICON.length]);
+                      String letter = e.name.isEmpty() ? "?" : e.name.substring(0, 1).toUpperCase();
+                      drawCenteredString(fr, letter, x + 17, y + 13, TXT);
+
+                      String badge = e.self ? "CLIENT" : (e.factory != null ? "CONFIG" : null);
+                      int bw = badge == null ? 0 : fr.getStringWidth(badge) + 8;
+                      int tx = x + 34;
+                      fr.drawStringWithShadow(fr.trimStringToWidth(e.name, cw - 40), tx, y + 7, TXT);
+                      String ver = e.version == null ? "" : "v" + e.version;
+                      fr.drawString(fr.trimStringToWidth(ver, cw - 40 - bw - 4), tx, y + 19, SUB);
+                      if (badge != null) {
+                          int bx = x + cw - bw - 6;
+                          rr(bx, y + 18, bw, 11, 5, ACCENT);
+                          fr.drawString(badge, bx + 4, y + 20, TXT);
+                      }
+                      hit(x, y, cw, ch, new Runnable() {
+                          @Override
+                          public void run() {
+                              openMod(e);
+                          }
+                      });
+                  }
+              }
+
+              private void openMod(Entry e) {
+                  if (e.self) {
+                      tab = 1;
+                      scroll = 0;
+                      return;
+                  }
+                  if (e.factory == null) {
+                      say("Esse mod não tem tela de configuração.");
+                      return;
+                  }
+                  try {
+                      GuiScreen s = e.factory.mainConfigGuiClass().getConstructor(GuiScreen.class).newInstance(this);
+                      mc.displayGuiScreen(s);
+                  } catch (Throwable t) {
+                      say("Não foi possível abrir a config desse mod.");
+                  }
+              }
+
+              // ---------- aba Client ----------
+              private static boolean get(int id) {
+                  switch (id) {
+                      case 0: return ModConfig.fps;
+                      case 1: return ModConfig.cps;
+                      case 2: return ModConfig.coords;
+                      case 3: return ModConfig.keystrokes;
+                      case 4: return ModConfig.armor;
+                      case 5: return ModConfig.potions;
+                      case 6: return ModConfig.toggleSprint;
+                      case 7: return ModConfig.zoom;
+                      case 8: return ModConfig.fpsBoostOnStart;
+                      case 9: return ModConfig.noReequip;
+                      case 10: return ModConfig.itemCustom;
+                  }
+                  return false;
+              }
+
+              private static void toggle(int id) {
+                  switch (id) {
+                      case 0: ModConfig.fps = !ModConfig.fps; break;
+                      case 1: ModConfig.cps = !ModConfig.cps; break;
+                      case 2: ModConfig.coords = !ModConfig.coords; break;
+                      case 3: ModConfig.keystrokes = !ModConfig.keystrokes; break;
+                      case 4: ModConfig.armor = !ModConfig.armor; break;
+                      case 5: ModConfig.potions = !ModConfig.potions; break;
+                      case 6: ModConfig.toggleSprint = !ModConfig.toggleSprint; break;
+                      case 7: ModConfig.zoom = !ModConfig.zoom; break;
+                      case 8: ModConfig.fpsBoostOnStart = !ModConfig.fpsBoostOnStart; break;
+                      case 9: ModConfig.noReequip = !ModConfig.noReequip; break;
+                      case 10: ModConfig.itemCustom = !ModConfig.itemCustom; break;
+                  }
+              }
+
+              private void switchRow(FontRenderer fr, int x, int y, int w, String label, final int id) {
+                  boolean hov = over(x, y, w, 26) && inView(mx, my);
+                  rr(x, y, w, 26, 5, hov ? CARD_HOVER : CARD);
+                  fr.drawStringWithShadow(fr.trimStringToWidth(label, w - 44), x + 8, y + 9, TXT);
+                  boolean on = get(id);
+                  rr(x + w - 32, y + 7, 24, 12, 6, on ? ACCENT : OFF);
+                  rr(on ? x + w - 20 : x + w - 31, y + 8, 10, 10, 5, TXT);
+                  hit(x, y, w, 26, new Runnable() {
+                      @Override
+                      public void run() {
+                          toggle(id);
+                      }
+                  });
+              }
+
+              private void drawClient(FontRenderer fr) {
+                  int cols = vw >= 250 ? 2 : 1;
+                  int cw = (vw - (cols - 1) * 6) / cols;
+                  int rows = (TOGGLES.length + cols - 1) / cols;
+                  contentH = rows * 32;
+                  for (int i = 0; i < TOGGLES.length; i++) {
+                      int x = vx + (i % cols) * (cw + 6);
+                      int y = vy + (i / cols) * 32 - scroll;
+                      if (y + 26 < vy || y > vy + vh) continue;
+                      switchRow(fr, x, y, cw, TOGGLES[i], i);
+                  }
+              }
+
+              // ---------- aba FPS ----------
+              private void drawFps(FontRenderer fr) {
+                  int y = vy - scroll;
+                  int w = vw;
+
+                  @SuppressWarnings("unchecked")
+                  List<String> lines = fr.listFormattedStringToWidth(
+                          "Ajusta só as opções de vídeo do próprio jogo: gráficos rápidos, sem nuvens, "
+                                  + "menos partículas, sem AO e sombras, VBO ligado e vsync desligado.", w - 16);
+                  int ch = 10 + lines.size() * 10;
+                  rr(vx, y, w, ch, 5, CARD);
+                  for (int i = 0; i < lines.size(); i++) {
+                      fr.drawString(lines.get(i), vx + 8, y + 7 + i * 10, SUB);
+                  }
+                  y += ch + 6;
+
+                  boolean hov = over(vx, y, w, 24) && inView(mx, my);
+                  rr(vx, y, w, 24, 5, hov ? 0xFF4A82FF : ACCENT);
+                  drawCenteredString(fr, "Aplicar FPS boost agora", vx + w / 2, y + 8, TXT);
+                  hit(vx, y, w, 24, new Runnable() {
+                      @Override
+                      public void run() {
+                          FpsBoost.apply();
+                          say("FPS boost aplicado!");
+                      }
+                  });
+                  y += 30;
+
+                  switchRow(fr, vx, y, w, "Aplicar ao iniciar o jogo", 8);
+                  y += 32;
+
+                  rr(vx, y, w, 26, 5, CARD);
+                  fr.drawStringWithShadow("Distância máx.: " + ModConfig.renderDistance + " chunks", vx + 8, y + 9, TXT);
+                  int bx = vx + w - 44;
+                  rr(bx, y + 5, 16, 16, 4, over(bx, y + 5, 16, 16) ? CARD_HOVER : OFF);
+                  drawCenteredString(fr, "-", bx + 8, y + 9, TXT);
+                  hit(bx, y + 5, 16, 16, new Runnable() {
+                      @Override
+                      public void run() {
+                          ModConfig.renderDistance = Math.max(2, ModConfig.renderDistance - 1);
+                      }
+                  });
+                  int bx2 = vx + w - 24;
+                  rr(bx2, y + 5, 16, 16, 4, over(bx2, y + 5, 16, 16) ? CARD_HOVER : OFF);
+                  drawCenteredString(fr, "+", bx2 + 8, y + 9, TXT);
+                  hit(bx2, y + 5, 16, 16, new Runnable() {
+                      @Override
+                      public void run() {
+                          ModConfig.renderDistance = Math.min(16, ModConfig.renderDistance + 1);
+                      }
+                  });
+                  y += 32;
+
+                  fr.drawString("FPS atual: " + net.minecraft.client.Minecraft.getDebugFPS(), vx + 2, y + 2, SUB);
+                  contentH = (y + 14) - (vy - scroll);
+              }
+
+              // ---------- aba Anim (estilo OverflowAnimations) ----------
+              private static int clamp(int v, int lo, int hi) {
+                  return Math.max(lo, Math.min(hi, v));
+              }
+
+              private static String sgn(int v) {
+                  return v > 0 ? "+" + v : String.valueOf(v);
+              }
+
+              private void stepRow(FontRenderer fr, int x, int y, int w, String text,
+                                   final Runnable minus, final Runnable plus) {
+                  rr(x, y, w, 26, 5, CARD);
+                  fr.drawStringWithShadow(fr.trimStringToWidth(text, w - 56), x + 8, y + 9, TXT);
+                  int bx = x + w - 44;
+                  rr(bx, y + 5, 16, 16, 4, over(bx, y + 5, 16, 16) && inView(mx, my) ? CARD_HOVER : OFF);
+                  drawCenteredString(fr, "-", bx + 8, y + 9, TXT);
+                  hit(bx, y + 5, 16, 16, minus);
+                  int bx2 = x + w - 24;
+                  rr(bx2, y + 5, 16, 16, 4, over(bx2, y + 5, 16, 16) && inView(mx, my) ? CARD_HOVER : OFF);
+                  drawCenteredString(fr, "+", bx2 + 8, y + 9, TXT);
+                  hit(bx2, y + 5, 16, 16, plus);
+              }
+
+              private void drawAnim(FontRenderer fr) {
+                  int cols = vw >= 320 ? 2 : 1;
+                  int cw = (vw - (cols - 1) * 6) / cols;
+                  final int total = 10;
+                  for (int i = 0; i < total; i++) {
+                      int x = vx + (i % cols) * (cw + 6);
+                      int y = vy + (i / cols) * 32 - scroll;
+                      boolean visible = !(y + 26 < vy || y > vy + vh);
+                      if (!visible) continue;
+                      switch (i) {
+                          case 0:
+                              switchRow(fr, x, y, cw, "Sem animação ao trocar item", 9);
+                              break;
+                          case 1:
+                              stepRow(fr, x, y, cw, "Velocidade do swing: " + ModConfig.swingSpeed + "%",
+                                      new Runnable() { public void run() { ModConfig.swingSpeed = clamp(ModConfig.swingSpeed - 25, 25, 300); } },
+                                      new Runnable() { public void run() { ModConfig.swingSpeed = clamp(ModConfig.swingSpeed + 25, 25, 300); } });
+                              break;
+                          case 2:
+                              switchRow(fr, x, y, cw, "Item personalizado (1ª pessoa)", 10);
+                              break;
+                          case 3:
+                              stepRow(fr, x, y, cw, "Posição X: " + sgn(ModConfig.itemX),
+                                      new Runnable() { public void run() { ModConfig.itemX = clamp(ModConfig.itemX - 1, -40, 40); } },
+                                      new Runnable() { public void run() { ModConfig.itemX = clamp(ModConfig.itemX + 1, -40, 40); } });
+                              break;
+                          case 4:
+                              stepRow(fr, x, y, cw, "Posição Y: " + sgn(ModConfig.itemY),
+                                      new Runnable() { public void run() { ModConfig.itemY = clamp(ModConfig.itemY - 1, -40, 40); } },
+                                      new Runnable() { public void run() { ModConfig.itemY = clamp(ModConfig.itemY + 1, -40, 40); } });
+                              break;
+                          case 5:
+                              stepRow(fr, x, y, cw, "Posição Z: " + sgn(ModConfig.itemZ),
+                                      new Runnable() { public void run() { ModConfig.itemZ = clamp(ModConfig.itemZ - 1, -40, 40); } },
+                                      new Runnable() { public void run() { ModConfig.itemZ = clamp(ModConfig.itemZ + 1, -40, 40); } });
+                              break;
+                          case 6:
+                              stepRow(fr, x, y, cw, "Rotação X: " + ModConfig.itemRotX + "°",
+                                      new Runnable() { public void run() { ModConfig.itemRotX = clamp(ModConfig.itemRotX - 5, -180, 180); } },
+                                      new Runnable() { public void run() { ModConfig.itemRotX = clamp(ModConfig.itemRotX + 5, -180, 180); } });
+                              break;
+                          case 7:
+                              stepRow(fr, x, y, cw, "Rotação Y: " + ModConfig.itemRotY + "°",
+                                      new Runnable() { public void run() { ModConfig.itemRotY = clamp(ModConfig.itemRotY - 5, -180, 180); } },
+                                      new Runnable() { public void run() { ModConfig.itemRotY = clamp(ModConfig.itemRotY + 5, -180, 180); } });
+                              break;
+                          case 8:
+                              stepRow(fr, x, y, cw, "Rotação Z: " + ModConfig.itemRotZ + "°",
+                                      new Runnable() { public void run() { ModConfig.itemRotZ = clamp(ModConfig.itemRotZ - 5, -180, 180); } },
+                                      new Runnable() { public void run() { ModConfig.itemRotZ = clamp(ModConfig.itemRotZ + 5, -180, 180); } });
+                              break;
+                          case 9:
+                              stepRow(fr, x, y, cw, "Tamanho: " + ModConfig.itemScale + "%",
+                                      new Runnable() { public void run() { ModConfig.itemScale = clamp(ModConfig.itemScale - 5, 30, 200); } },
+                                      new Runnable() { public void run() { ModConfig.itemScale = clamp(ModConfig.itemScale + 5, 30, 200); } });
+                              break;
+                      }
+                  }
+
+                  int y = vy + ((total + cols - 1) / cols) * 32 - scroll;
+                  boolean hov = over(vx, y, vw, 24) && inView(mx, my);
+                  rr(vx, y, vw, 24, 5, hov ? 0xFF4A82FF : ACCENT);
+                  drawCenteredString(fr, "Resetar item", vx + vw / 2, y + 8, TXT);
+                  hit(vx, y, vw, 24, new Runnable() {
+                      @Override
+                      public void run() {
+                          ModConfig.itemX = 0;
+                          ModConfig.itemY = 0;
+                          ModConfig.itemZ = 0;
+                          ModConfig.itemRotX = 0;
+                          ModConfig.itemRotY = 0;
+                          ModConfig.itemRotZ = 0;
+                          ModConfig.itemScale = 100;
+                          say("Item resetado.");
+                      }
+                  });
+                  fr.drawString("Os ajustes de item valem pro item na mão.", vx + 2, y + 30, SUB);
+                  contentH = (y + 42) - (vy - scroll);
+              }
+
+              // ---------- entrada (mouse com arrastar pra rolar, bom pra touch) ----------
+              @Override
+              protected void mouseClicked(int x, int y, int button) throws IOException {
+                  pressed = true;
+                  dragMoved = false;
+                  pressX = x;
+                  pressY = y;
+                  lastDragY = y;
+                  if (search != null) {
+                      search.setFocused(tab == 0 && x >= sx && x < sx + sww && y >= sy && y < sy + 18);
+                  }
+              }
+
+              @Override
+              protected void mouseClickMove(int x, int y, int button, long time) {
+                  if (!pressed) return;
+                  if (Math.abs(x - pressX) > 4 || Math.abs(y - pressY) > 4) dragMoved = true;
+                  if (dragMoved && inView(pressX, pressY)) {
+                      scroll -= (y - lastDragY);
+                      int max = Math.max(0, contentH - vh);
+                      if (scroll < 0) scroll = 0;
+                      if (scroll > max) scroll = max;
+                  }
+                  lastDragY = y;
+              }
+
+              @Override
+              protected void mouseReleased(int x, int y, int state) {
+                  if (pressed && !dragMoved) {
+                      for (int i = hits.size() - 1; i >= 0; i--) {
+                          Hit h = hits.get(i);
+                          if (x >= h.x && x < h.x + h.w && y >= h.y && y < h.y + h.h) {
+                              if (!h.clip || inView(x, y)) {
+                                  h.r.run();
+                                  break;
+                              }
+                          }
+                      }
+                  }
+                  pressed = false;
+              }
+
+              @Override
+              public void handleMouseInput() throws IOException {
+                  super.handleMouseInput();
+                  int d = Mouse.getEventDWheel();
+                  if (d != 0) {
+                      scroll -= Integer.signum(d) * 20;
+                      int max = Math.max(0, contentH - vh);
+                      if (scroll < 0) scroll = 0;
+                      if (scroll > max) scroll = max;
+                  }
+              }
+
+              @Override
+              protected void keyTyped(char c, int key) throws IOException {
+                  if (search != null && search.isFocused() && key != Keyboard.KEY_ESCAPE) {
+                      search.textboxKeyTyped(c, key);
+                      lastSearch = search.getText();
+                      scroll = 0;
+                      return;
+                  }
+                  super.keyTyped(c, key);
+              }
+          }
+          LEGITEOF
+
+      - name: Instalar Gradle 2.14.1
+        run: |
+          wget -q https://services.gradle.org/distributions/gradle-2.14.1-bin.zip
+          unzip -q gradle-2.14.1-bin.zip
+          echo "$PWD/gradle-2.14.1/bin" >> $GITHUB_PATH
+
+      - name: Compilar
+        working-directory: proj
+        run: gradle setupCIWorkspace build --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LegitClient
+          path: proj/build/libs/LegitClient-1.0.0.jar
